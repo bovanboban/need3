@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Escrow {
+    address public buyer;
+    address public seller;
+    address public escrowAgent;
+    uint256 public amount;
+    enum State { Created, Locked, Released, Canceled }
+    State public state;
+
+    modifier onlyBuyer() {
+        require(msg.sender == buyer, "Only buyer can perform this action");
+        _;
+    }
+
+    modifier onlySeller() {
+        require(msg.sender == seller, "Only seller can perform this action");
+        _;
+    }
+
+    modifier onlyEscrowAgent() {
+        require(msg.sender == escrowAgent, "Only escrow agent can perform this action");
+        _;
+    }
+
+    modifier inState(State _state) {
+        require(state == _state, "Invalid state for this operation");
+        _;
+    }
+
+    constructor(address _buyer, address _seller, address _escrowAgent, uint256 _amount) {
+        buyer = _buyer;
+        seller = _seller;
+        escrowAgent = _escrowAgent;
+        amount = _amount;
+        state = State.Created;
+    }
+
+    function deposit() public payable onlyBuyer inState(State.Created) {
+        require(msg.value == amount, "Incorrect amount sent");
+        state = State.Locked;
+    }
+
+    function release() public onlyEscrowAgent inState(State.Locked) {
+        payable(seller).transfer(amount);
+        state = State.Released;
+    }
+
+    function cancel() public onlyEscrowAgent inState(State.Locked) {
+        payable(buyer).transfer(amount);
+        state = State.Canceled;
+    }
+}
